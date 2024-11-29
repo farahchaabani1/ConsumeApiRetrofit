@@ -4,9 +4,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.consumeapiretrofit.PokemonApplication
+import com.example.consumeapiretrofit.data.NetworkPokemonRepository
+import com.example.consumeapiretrofit.data.PokemonRepository
 import com.example.consumeapiretrofit.model.Pokemon
-import com.example.consumeapiretrofit.network.PockApi
 import kotlinx.coroutines.launch
 
 import retrofit2.HttpException
@@ -19,7 +25,7 @@ sealed interface PockUiState {
     object Loading : PockUiState
 }
 
-class PokViewModel: ViewModel() {
+class PokViewModel(private val pokemonRepository: PokemonRepository): ViewModel() {
     /** The mutable State that stores the status of the most recent request */
     var pockUiState: PockUiState by mutableStateOf(PockUiState.Loading)
         private set
@@ -33,7 +39,9 @@ class PokViewModel: ViewModel() {
         viewModelScope.launch {
 
             pockUiState = try {
-                val listResult = PockApi.retrofitService.getAllPokemon()
+
+                val listResult = pokemonRepository.getAllPokemon()
+
                 PockUiState.Success(
                     listResult
                 )
@@ -41,6 +49,16 @@ class PokViewModel: ViewModel() {
                 PockUiState.Error
             } catch (e: HttpException) {
                 PockUiState.Error
+            }
+        }
+    }
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val application = (this[APPLICATION_KEY] as PokemonApplication)
+                val pokemonRepository = application.container.pokemonRepository
+                PokViewModel(pokemonRepository = pokemonRepository)
             }
         }
     }
